@@ -1,0 +1,167 @@
+inst boiler {
+    Prologue = Prologue0
+    Epilogue = Epilogue0
+    HeapCell = Prologue0 + Epilogue0 + HeapCell0 + HeapCell1
+    prologue = StateA0->Prologue0 + StateB0->Prologue0
+    epilogue = StateA0->Epilogue0 + StateB0->Epilogue0
+    heapSize = StateA0->sing[7] + StateB0->sing[7]
+}
+
+--Unallocated block of correct size is allocated. (SAT)
+inst simple_SAT {
+    boiler
+
+        blocks = StateA0->Prologue0 + StateA0->HeapCell0 + StateA0->Epilogue0 + StateB0->Prologue0 + StateB0->HeapCell1 + StateB0->Epilogue0
+    sizes = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[3] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell1->sing[3] + StateB0->Epilogue0->sing[1]
+    allocated = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[0] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell1->sing[1] + StateB0->Epilogue0->sing[1]
+    pointers = StateA0->Prologue0->sing[0] + StateA0->HeapCell0->sing[1] + StateA0->Epilogue0->sing[4] + StateB0->Prologue0->sing[0] + StateB0->HeapCell1->sing[1] + StateB0->Epilogue0->sing[4]
+    prev = StateA0->HeapCell0->Prologue0 + StateA0->Epilogue0->HeapCell0 + StateB0->HeapCell1->Prologue0 + StateB0->Epilogue0->HeapCell1
+    next = StateA0->Prologue0->HeapCell0 + StateA0->HeapCell0->Epilogue0 + StateB0->Prologue0->HeapCell1 + StateB0->HeapCell1->Epilogue0
+
+    size = StateB0->sing[3]
+}
+
+test expect {
+   test0: {best_fit_malloc} for simple_SAT is sat
+ }
+
+--Free block is too small to malloc, but we malloc it anyways. (UNSAT)
+inst simple_UNSAT {
+    boiler
+
+        blocks = StateA0->Prologue0 + StateA0->HeapCell0 + StateA0->Epilogue0 + StateB0->Prologue0 + StateB0->HeapCell1 + StateB0->Epilogue0
+    sizes = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[2] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell1->sing[3] + StateB0->Epilogue0->sing[1]
+    allocated = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[0] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell1->sing[1] + StateB0->Epilogue0->sing[1]
+    pointers = StateA0->Prologue0->sing[0] + StateA0->HeapCell0->sing[1] + StateA0->Epilogue0->sing[4] + StateB0->Prologue0->sing[0] + StateB0->HeapCell1->sing[1] + StateB0->Epilogue0->sing[4]
+    prev = StateA0->HeapCell0->Prologue0 + StateA0->Epilogue0->HeapCell0 + StateB0->HeapCell1->Prologue0 + StateB0->Epilogue0->HeapCell1
+    next = StateA0->Prologue0->HeapCell0 + StateA0->HeapCell0->Epilogue0 + StateB0->Prologue0->HeapCell1 + StateB0->HeapCell1->Epilogue0
+
+    size = StateB0->sing[3]
+}
+
+test expect {
+   test1: {best_fit_malloc} for simple_UNSAT is unsat
+ }
+
+--Malloced block is added to the end b/c free block is too small. (SAT)
+inst add_to_end_free_block_too_small {
+    boiler
+        blocks = StateA0->Prologue0 + StateA0->HeapCell0 + StateA0->Epilogue0 + StateB0->Prologue0 + StateB0->HeapCell0 + StateB0->HeapCell1 + StateB0->Epilogue0
+    sizes = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[3] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell0->sing[3] + StateB0->HeapCell1->sing[5] + StateB0->Epilogue0->sing[1]
+    allocated = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[0] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell0->sing[0] + StateB0->HeapCell1->sing[1] + StateB0->Epilogue0->sing[1]
+    pointers = StateA0->Prologue0->sing[0] + StateA0->HeapCell0->sing[1] + StateA0->Epilogue0->sing[4] + StateB0->Prologue0->sing[0] + StateB0->HeapCell0->sing[1] + StateB0->HeapCell1->sing[2] + StateB0->Epilogue0->sing[4]
+    prev = StateA0->HeapCell0->Prologue0 + StateA0->Epilogue0->HeapCell0 + StateB0->HeapCell0->Prologue0 + StateB0->HeapCell1->HeapCell0 + StateB0->Epilogue0->HeapCell1
+    next = StateA0->Prologue0->HeapCell0 + StateA0->HeapCell0->Epilogue0 + StateB0->Prologue0->HeapCell0 + StateB0->HeapCell0->HeapCell1 + StateB0->HeapCell1->Epilogue
+
+    size = StateB0->sing[5]
+}
+
+test expect {
+   test2: {best_fit_malloc} for add_to_end_free_block_too_small is sat
+ }
+
+--No unallocated blocks, so malloced block is added to the end. (SAT)
+inst add_to_end_no_free_blocks {
+    boiler
+        blocks = StateA0->Prologue0 + StateA0->HeapCell0 + StateA0->Epilogue0 + StateB0->Prologue0 + StateB0->HeapCell0 + StateB0->HeapCell1 + StateB0->Epilogue0
+    sizes = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[3] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell0->sing[3] + StateB0->HeapCell1->sing[3] + StateB0->Epilogue0->sing[1]
+    allocated = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[1] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell0->sing[0] + StateB0->HeapCell1->sing[1] + StateB0->Epilogue0->sing[1]
+    pointers = StateA0->Prologue0->sing[0] + StateA0->HeapCell0->sing[1] + StateA0->Epilogue0->sing[4] + StateB0->Prologue0->sing[0] + StateB0->HeapCell0->sing[1] + StateB0->HeapCell1->sing[2] + StateB0->Epilogue0->sing[4]
+    prev = StateA0->HeapCell0->Prologue0 + StateA0->Epilogue0->HeapCell0 + StateB0->HeapCell0->Prologue0 + StateB0->HeapCell1->HeapCell0 + StateB0->Epilogue0->HeapCell1
+    next = StateA0->Prologue0->HeapCell0 + StateA0->HeapCell0->Epilogue0 + StateB0->Prologue0->HeapCell0 + StateB0->HeapCell0->HeapCell1 + StateB0->HeapCell1->Epilogue
+
+    size = StateB0->sing[3]
+}
+
+test expect {
+   test3: {best_fit_malloc} for add_to_end_no_free_blocks is sat
+ }
+
+--Malloc size of 0, pre and post state should both be valid. No change. (SAT)
+inst size_0_malloc {
+    boiler
+        blocks = StateA0->Prologue0 + StateA0->HeapCell0 + StateA0->Epilogue0 + StateB0->Prologue0 + StateB0->HeapCell0 + StateB0->Epilogue0
+    sizes = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[3] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell0->sing[3] + StateB0->Epilogue0->sing[1]
+    allocated = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[0] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell0->sing[0] + StateB0->Epilogue0->sing[1]
+    pointers = StateA0->Prologue0->sing[0] + StateA0->HeapCell0->sing[1] + StateA0->Epilogue0->sing[4] + StateB0->Prologue0->sing[0] + StateB0->HeapCell0->sing[1] + StateB0->Epilogue0->sing[4]
+    prev = StateA0->HeapCell0->Prologue0 + StateA0->Epilogue0->HeapCell0 + StateB0->HeapCell1->Prologue0 + StateB0->Epilogue0->HeapCell1
+    next = StateA0->Prologue0->HeapCell0 + StateA0->HeapCell0->Epilogue0 + StateB0->Prologue0->HeapCell0 + StateB0->HeapCell0->Epilogue0
+
+    size = StateB0->sing[0]
+}
+
+test expect {
+   test4: {best_fit_malloc} for size_0_malloc is sat
+ }
+
+--Mallocing a free block that is too big, so split block (SAT)
+inst split_case_test {
+    boiler
+        blocks = StateA0->Prologue0 + StateA0->HeapCell0 + StateA0->Epilogue0 + StateB0->Prologue0 + StateB0->HeapCell1 + StateB0->HeapCell2 + StateB0->Epilogue0
+
+    sizes = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[5] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell1->sing[3] + StateB0->HeapCell2->sing[2]+ StateB0->Epilogue0->sing[1]
+    allocated = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[0] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell1->sing[1] + StateB0->HeapCell2->sing[0] + StateB0->Epilogue0->sing[1]
+    pointers = StateA0->Prologue0->sing[0] + StateA0->HeapCell0->sing[1] + StateA0->Epilogue0->sing[4] + StateB0->Prologue0->sing[0] + StateB0->HeapCell1->sing[1] + StateB0->HapCell2->sing[2] + StateB0->Epilogue0->sing[4]
+    prev = StateA0->HeapCell0->Prologue0 + StateA0->Epilogue0->HeapCell0 + StateB0->HeapCell1->Prologue0 + StateB0->HeapCell2->HeapCell1 + StateB0->Epilogue0->HeapCell2
+    next = StateA0->Prologue0->HeapCell0 + StateA0->HeapCell0->Epilogue0 + StateB0->Prologue0->HeapCell1 + StateB0->HeapCell1->HeapCell2 + StateB0->HeapCell2->Epilogue0
+
+    size = StateB0->sing[3]
+}
+
+test expect {
+   test5: {best_fit_malloc} for split_case_test is sat
+ }
+
+--Malloc selects best fit block from a number of valid free blocks. (SAT)
+inst best_fit_test {
+    boiler
+
+        blocks = StateA0->Prologue0 + StateA0->HeapCell0 + StateA0->HeapCell1 + StateA0->HeapCell2 + StateA0->Epilogue0 + StateB0->Prologue0 + StateB0->HeapCell3 + StateB0->HeapCell4 + StateB0->HeapCell5 + StateB0->Epilogue0
+    sizes = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[3] + StateA0->HeapCell1->sing[1] + StateA0->HeapCell2->sing[2] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell3->sing[3] + StateB0->HeapCell4->sing[1]+ StateB0->HeapCell5->sing[2] + StateB0->Epilogue0->sing[1]
+    allocated = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[0] + StateA0->HeapCell1->sing[1] + StateA0->HeapCell2->sing[0] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell3->sing[0] + StateB0->HeapCell4->sing[1] + StateB0->HeapCell5->sing[1] + StateB0->Epilogue0->sing[1]
+    pointers = StateA0->Prologue0->sing[0] + StateA0->HeapCell0->sing[1] + StateA0->HeapCel1->sing[2] + StateA0->HeapCell2->sing[3] + StateA0->Epilogue0->sing[4] + StateB0->Prologue0->sing[0] + StateB0->HeapCell3->sing[1] + StateB0->HapCell4->sing[2] + StateB0->HeapCell5->sing[3] + StateB0->Epilogue0->sing[4]
+    prev = StateA0->HeapCell0->Prologue0 + StateA0->HeapCell1->HeapCell0 + StateA0->HeapCell2->HeapCell1 + StateA0->Epilogue0->HeapCell2 + StateB0->HeapCell3->Prologue0 + StateB0->HeapCell4->HeapCell3 + StateB0->HeapCell5->HeapCell4 + StateB0->Epilogue0->HeapCell5
+    next = StateA0->Prologue0->HeapCell0 + StateA0->HeapCell0->HeapCell1 + StateA0->HeapCell1->HeapCell2 + StateA0->HeapCell2->Epilogue0 + StateB0->Prologue0->HeapCell3 + StateB0->HeapCell3->HeapCell4 + StateB0->HeapCell4->HeapCell5 + StateB0->HeapCell5->Epilogue0
+
+    size = StateB0->sing[2]
+}
+
+test expect {
+   test6: {best_fit_malloc} for best_fit_test is sat
+ }
+
+--Malloc selects best fit block, even if it results in a split. (SAT)
+inst best_fit_w_split_test {
+    boiler
+
+        blocks = StateA0->Prologue0 + StateA0->HeapCell0 + StateA0->HeapCell1 + StateA0->HeapCell2 + StateA0->Epilogue0 + StateB0->Prologue0 + StateB0->HeapCell3 + StateB0->HeapCell4 + StateB0->HeapCell5 + StateB0->HeapCell6 + StateB0->Epilogue0
+    sizes = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[3] + StateA0->HeapCell1->sing[1] + StateA0->HeapCell2->sing[5] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell3->sing[3] + StateB0->HeapCell4->sing[1]+ StateB0->HeapCell5->sing[4] + StateB0->HeapCell6->sing[1] + StateB0->Epilogue0->sing[1]
+    allocated = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[0] + StateA0->HeapCell1->sing[1] + StateA0->HeapCell2->sing[0] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell3->sing[0] + StateB0->HeapCell4->sing[1] + StateB0->HeapCell5->sing[1] + StateB0->HeapCell6->sing[0]+ StateB0->Epilogue0->sing[1]
+    pointers = StateA0->Prologue0->sing[0] + StateA0->HeapCell0->sing[1] + StateA0->HeapCel1->sing[2] + StateA0->HeapCell2->sing[3] + StateA0->Epilogue0->sing[4] + StateB0->Prologue0->sing[0] + StateB0->HeapCell3->sing[1] + StateB0->HapCell4->sing[2] + StateB0->HeapCell5->sing[3] + StateB0->HeapCell6->sing[2] + StateB0->Epilogue0->sing[4]
+    prev = StateA0->HeapCell0->Prologue0 + StateA0->HeapCell1->HeapCell0 + StateA0->HeapCell2->HeapCell1 + StateA0->Epilogue0->HeapCell2 + StateB0->HeapCell3->Prologue0 + StateB0->HeapCell4->HeapCell3 + StateB0->HeapCell5->HeapCell4 + StateB0->HeapCell6->HeapCell5 + StateB0->Epilogue0->HeapCell6
+    next = StateA0->Prologue0->HeapCell0 + StateA0->HeapCell0->HeapCell1 + StateA0->HeapCell1->HeapCell2 + StateA0->HeapCell2->Epilogue0 + StateB0->Prologue0->HeapCell3 + StateB0->HeapCell3->HeapCell4 + StateB0->HeapCell4->HeapCell5 + StateB0->HeapCell5->HeapCell6 + StateB0->HeapCell6->Epilogue0
+
+    size = StateB0->sing[4]
+}
+
+test expect {
+   test7: {best_fit_malloc} for best_fit_w_split_test is sat
+ }
+
+--Mallocing a size > 7 results in heap overflow (UNSAT)
+inst heap_overflow_UNSAT_test {
+    boiler
+
+        blocks = StateA0->Prologue0 + StateA0->HeapCell0 + StateA0->Epilogue0 + StateB0->Prologue0 + StateB0->HeapCell1 + StateB0->Epilogue0
+    sizes = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[8] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell1->sing[8] + StateB0->Epilogue0->sing[1]
+    allocated = StateA0->Prologue0->sing[1] + StateA0->HeapCell0->sing[0] + StateA0->Epilogue0->sing[1] + StateB0->Prologue0->sing[1] + StateB0->HeapCell1->sing[1] + StateB0->Epilogue0->sing[1]
+    pointers = StateA0->Prologue0->sing[0] + StateA0->HeapCell0->sing[1] + StateA0->Epilogue0->sing[4] + StateB0->Prologue0->sing[0] + StateB0->HeapCell1->sing[1] + StateB0->Epilogue0->sing[4]
+    prev = StateA0->HeapCell0->Prologue0 + StateA0->Epilogue0->HeapCell0 + StateB0->HeapCell1->Prologue0 + StateB0->Epilogue0->HeapCell1
+    next = StateA0->Prologue0->HeapCell0 + StateA0->HeapCell0->Epilogue0 + StateB0->Prologue0->HeapCell1 + StateB0->HeapCell1->Epilogue0
+
+    size = StateB0->sing[8]
+}
+
+test expect {
+   test8: {best_fit_malloc} for heap_overflow_UNSAT_test is unsat
+ }
